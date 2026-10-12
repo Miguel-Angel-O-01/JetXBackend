@@ -1,0 +1,6 @@
+@JetX.WebAPI_HostAddress = http://localhost:5007
+
+GET {{JetX.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
