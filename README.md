@@ -1,4 +1,4 @@
-# JetX — Ecosistema Distribuido de Reserva de Jets Privados en Tiempo Real
+# JetX — Ecosistema Distribuido de Reserva de Jets Privados en Tiempo Real.
 
 **JetX** es una plataforma tecnológica empresarial inspirada en el modelo de movilidad bajo demanda de Uber, pero adaptada al sector de la aviación privada ejecutiva. El sistema está diseñado mediante una arquitectura distribuida que conecta un núcleo de servicios en la nube con bases de datos geoespaciales, un panel de administración inteligente y un cliente móvil nativo de alto rendimiento.
 
