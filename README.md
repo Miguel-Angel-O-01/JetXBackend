@@ -59,7 +59,7 @@ El diseño, arquitectura y programación de este ecosistema ha sido desarrollado
 
 *   **MIGUEL ANGEL CRUZ OLMEDO** —— **Carnet: 27-2723-2025**
 *   **PEDRO RICARDO ORANTES CUELLAR** —— **Carnet: 27-6587-2013**
-*   **ADRINA MELISSA ROQUE DE PAZ** —— **Carnet: 25-0674-2022**
+*   **ADRIANA MELISSA ROQUE DE PAZ** —— **Carnet: 25-0674-2022**
 *   **JESÚS ENRIQUE MARTINEZ JUÁREZ** —— **Carnet: 27-0637-2025**
 *   **GEOVANNY DANIEL BARRERA HERRERA** —— **Carnet: 25-0615-2022**
 *   **ABNER ESAU VASQUEZ DIAZ** —— **Carnet: 23-3426-2022**
