@@ -11,7 +11,7 @@ builder.Services.AddScoped<JetX.Application.Interfaces.IJetRepository, JetX.Infr
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline WORKING FOR JETX.
 if (app.Environment.IsDevelopment())
 {
     //app.MapOpenApi();
@@ -24,3 +24,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+
