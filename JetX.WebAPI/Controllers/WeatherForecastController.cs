@@ -24,3 +24,4 @@ namespace JetX.WebAPI.Controllers
         }
     }
 }
+

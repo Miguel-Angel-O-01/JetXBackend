@@ -1,7 +1,8 @@
 ﻿using Supabase;
 using JetX.Domain.Entities;
 using JetX.Application.Interfaces;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Primitives;
+
 
 namespace JetX.Infrastructure.Repositories
 {
