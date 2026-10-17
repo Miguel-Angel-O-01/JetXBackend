@@ -11,7 +11,7 @@
     <ProjectReference Include="..\..\JetX.Application\JetX.Application.csproj" />
     <ProjectReference Include="..\..\JetX.Infrastructure\JetX.Infrastructure.csproj" />
     <ProjectReference Include="..\JetX.BackOffice.Client\JetX.BackOffice.Client.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="11.0.0-rc.2.26504.105" />
   </ItemGroup>
 
 </Project>
