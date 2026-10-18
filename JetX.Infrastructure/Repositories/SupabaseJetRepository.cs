@@ -1,8 +1,8 @@
-﻿using Supabase;
+﻿using Microsoft.Extensions.Configuration;
+using Supabase;
 using JetX.Domain.Entities;
 using JetX.Application.Interfaces;
-using Microsoft.Extensions.Configuration.Primitives;
-
+using JetX.Infrastructure.Models;
 
 namespace JetX.Infrastructure.Repositories
 {
@@ -10,59 +10,62 @@ namespace JetX.Infrastructure.Repositories
     {
         private readonly Client _supabaseClient;
 
-        // El constructor recibe la configuración general (User Secrets / appsettings)
         public SupabaseJetRepository(IConfiguration configuration)
         {
             var url = configuration["SupabaseSettings:Url"]
-                ?? throw new ArgumentNullException("La URL de Supabase no está configurada.");
+                ?? throw new ArgumentNullException(nameof(configuration), "La URL de Supabase no está configurada.");
             var anonKey = configuration["SupabaseSettings:AnonKey"]
-                ?? throw new ArgumentNullException("La AnonKey de Supabase no está configurada.");
+                ?? throw new ArgumentNullException(nameof(configuration), "La AnonKey de Supabase no está configurada.");
 
-            // Inicializamos el cliente oficial de la nube
-            var options = new SupabaseOptions { AutoConnectRealtime = true };
+            var options = new SupabaseOptions { AutoConnectRealtime = false };
             _supabaseClient = new Client(url, anonKey, options);
         }
 
         public async Task<IEnumerable<Jet>> ObtenerTodosLosJetsAsync()
         {
-            // Inicializa la conexión si no se ha hecho
             await _supabaseClient.InitializeAsync();
-
-            // Hace un mapeo automático a tu entidad de dominio desde la tabla public.jets
-            var response = await _supabaseClient.From<Jet>().Get();
-            return response.Models;
+            var response = await _supabaseClient.From<JetModel>().Get();
+            return response.Models.Select(MapToDomain);
         }
 
         public async Task<Jet?> ObtenerJetPorIdAsync(Guid id)
         {
             await _supabaseClient.InitializeAsync();
-
-            var response = await _supabaseClient.From<Jet>()
+            var response = await _supabaseClient.From<JetModel>()
                 .Where(x => x.Id == id)
-                .Get();
+                .Single();
 
-            return response.Model;
+            return response != null ? MapToDomain(response) : null;
         }
 
         public async Task<bool> ActualizarPosicionJetAsync(Guid jetId, double latitud, double longitud)
         {
             await _supabaseClient.InitializeAsync();
 
-            // Preparamos los datos volátiles de telemetría para la simulación en tiempo real
-            var updateData = new Dictionary<string, object>
+            var posicion = new JetPositionModel
             {
-                { "latitud", latitud },
-                { "longitud", longitud },
-                { "updated_at", DateTime.UtcNow }
+                JetId = jetId,
+                Latitud = latitud,
+                Longitud = longitud,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            // Actualizamos la tabla optimizada jet_positions que habilitamos con replicación
-            var response = await _supabaseClient.From<Jet>()
-                .Table("jet_positions")
-                .Where(x => x.Id == jetId)
-                .Update(updateData);
+            var response = await _supabaseClient.From<JetPositionModel>().Upsert(posicion);
+            return response.ResponseMessage != null && response.ResponseMessage.IsSuccessStatusCode;
+        }
 
-            return response.ResponseMessage.IsSuccessStatusCode;
+        private static Jet MapToDomain(JetModel model)
+        {
+            return new Jet
+            {
+                Id = model.Id,
+                Matricula = model.Matricula,
+                Modelo = model.Modelo,
+                CapacidadPasajeros = model.CapacidadPasajeros,
+                CostoHoraUsd = model.CostoHoraUsd,
+                Estado = model.Estado,
+                AeropuertoBaseId = model.AeropuertoBaseId
+            };
         }
     }
 }

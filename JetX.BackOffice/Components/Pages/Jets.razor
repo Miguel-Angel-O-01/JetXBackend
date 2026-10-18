@@ -1,0 +1,114 @@
+﻿@page "/jets"
+@rendermode InteractiveServer
+@inject IJetRepository JetRepository
+
+<PageTitle>JetX | Gestión de Flota</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark">Monitoreo de Flota Ejecutiva</h2>
+            <p class="text-muted mb-0">Control de aeronaves, estado operativo y tarifas por hora</p>
+        </div>
+        <button class="btn btn-dark px-4 shadow-sm" @onclick="CargarJetsAsync">
+            <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <span class="ms-3 text-muted">Cargando flota desde Supabase...</span>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">
+            <strong>Error de conexión:</strong> @errorMessage
+        </div>
+    }
+    else if (listaJets == null || !listaJets.Any())
+    {
+        <div class="alert alert-warning shadow-sm">
+            No se encontraron jets registrados en la base de datos de Supabase.
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-4">Matrícula</th>
+                            <th>Modelo</th>
+                            <th>Capacidad</th>
+                            <th>Costo / Hora</th>
+                            <th>Estado Actual</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var jet in listaJets)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-bold text-primary">@jet.Matricula</td>
+                                <td class="fw-semibold">@jet.Modelo</td>
+                                <td>@jet.CapacidadPasajeros pax</td>
+                                <td>$@jet.CostoHoraUsd.ToString("N2") USD</td>
+                                <td>
+                                    @if (jet.Estado == "Disponible")
+                                    {
+                                        <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">Disponible</span>
+                                    }
+                                    else if (jet.Estado == "EnVuelo")
+                                    {
+                                        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">En Vuelo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill">Mantenimiento</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-secondary">Detalles</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IEnumerable<Jet>? listaJets;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarJetsAsync();
+    }
+
+    private async Task CargarJetsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            listaJets = await JetRepository.ObtenerTodosLosJetsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
