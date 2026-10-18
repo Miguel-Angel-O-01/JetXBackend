@@ -1,13 +1,39 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="d-flex" style="min-height: 100vh;">
-    <!-- Barra lateral fija oscura -->
-    <aside class="bg-dark text-white shadow" style="width: 260px; min-height: 100vh;">
+<div class="d-flex" style="min-height: 100vh; background-color: #0b0e14; color: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Barra Lateral Oscura Ejecutiva -->
+    <aside style="width: 250px; min-width: 250px; background-color: #11151f; border-right: 1px solid rgba(255, 255, 255, 0.06);">
         <NavMenu />
     </aside>
 
-    <!-- Contenido dinámico de las páginas -->
-    <main class="flex-grow-1 bg-light p-4 overflow-auto">
-        @Body
-    </main>
+    <!-- Contenedor Principal -->
+    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+        <!-- Topbar Tipo Ribbon / Header -->
+        <header class="d-flex justify-content-between align-items-center px-4 py-2"
+                style="background-color: #11151f; border-bottom: 1px solid rgba(255, 255, 255, 0.06); height: 56px;">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge px-3 py-1 text-uppercase fw-semibold"
+                      style="background-color: rgba(0, 210, 255, 0.12); color: #00d2ff; border: 1px solid rgba(0, 210, 255, 0.25); font-size: 11px; letter-spacing: 0.5px;">
+                    JetX Dispatch Center
+                </span>
+                <span class="text-white-50 small">.NET 10 • Clean Architecture • Supabase PostGIS</span>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <span class="d-flex align-items-center gap-2 small text-white-50">
+                    <span class="spinner-grow spinner-grow-sm text-success" role="status" style="width: 8px; height: 8px;"></span>
+                    Telemetry Online
+                </span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                     style="width: 34px; height: 34px; background: linear-gradient(135deg, #00d2ff, #0077b6); font-size: 13px;">
+                    JX
+                </div>
+            </div>
+        </header>
+
+        <!-- Cuerpo de Vistas -->
+        <main class="flex-grow-1 p-4 overflow-auto" style="background-color: #0b0e14;">
+            @Body
+        </main>
+    </div>
 </div>

@@ -6,52 +6,128 @@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 @inject IJetRepository JetRepository
+@inject IRouteRepository RouteRepository
 @inject OpenSkyTrafficService OpenSkyService
 @implements IAsyncDisposable
 
-<PageTitle>JetX | Radar 3D Global</PageTitle>
+<PageTitle>JetX | Radar de Operaciones 3D</PageTitle>
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="fw-bold mb-1 text-dark">Radar de Operaciones Global</h2>
-            <p class="text-muted mb-0">Flota JetX integrada con telemetría ADS-B de OpenSky Network</p>
+<div class="d-flex flex-column h-100 w-100 rounded-3 overflow-hidden position-relative shadow-lg"
+     style="background-color: #0b0f19; border: 1px solid rgba(255, 255, 255, 0.08); min-height: 86vh;">
+
+    <!-- BARRA SUPERIOR TÁCTICA RIBBON -->
+    <header class="d-flex flex-wrap justify-content-between align-items-center px-4 py-3 border-bottom"
+            style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border-color: rgba(255, 255, 255, 0.08) !important; z-index: 10;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-2 rounded-2" style="background: rgba(0, 210, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3);">
+                <i class="bi bi-radar text-info fs-4"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="fw-bold mb-0 text-white tracking-wide">Centro de Mando Geoespacial</h5>
+                    <span class="badge rounded-pill text-uppercase px-2 py-1" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        ● Online (PostGIS / ADS-B)
+                    </span>
+                </div>
+                <small class="text-white-50">NASA WorldWind 3D Engine • Red de Aerovías Activa</small>
+            </div>
         </div>
+
         <div class="d-flex align-items-center gap-2">
-            <span class="badge @(liveTracking ? "bg-success" : "bg-secondary") px-3 py-2">
-                @(liveTracking ? "● Rastreo Automático Activo" : "○ En Pausa")
-            </span>
-            <button class="btn btn-outline-dark" @onclick="AlternarRastreo">
-                <i class="bi @(liveTracking ? "bi-pause-fill" : "bi-play-fill")"></i>
-                @(liveTracking ? "Pausar" : "Iniciar Rastreo")
+            <button class="btn btn-sm d-flex align-items-center gap-2 px-3 py-2 rounded-3 text-white"
+                    style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);"
+                    @onclick="AlternarRastreo">
+                <i class="bi @(liveTracking ? "bi-pause-circle-fill text-warning" : "bi-play-circle-fill text-success")"></i>
+                <span>@(liveTracking ? "Pausar Radar" : "Reanudar Radar")</span>
             </button>
-            <button class="btn btn-primary shadow-sm" @onclick="SincronizarRadarAsync" disabled="@cargando">
-                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Ahora
+
+            <button class="btn btn-sm btn-info text-dark fw-semibold d-flex align-items-center gap-2 px-3 py-2 rounded-3 shadow-sm"
+                    @onclick="SincronizarRadarAsync" disabled="@cargando">
+                <i class="bi bi-broadcast @(cargando ? "spinner-border spinner-border-sm" : "")"></i>
+                <span>@(cargando ? "Escaneando..." : "Sincronizar ADS-B")</span>
             </button>
         </div>
+    </header>
+
+    <!-- STATUS BAR -->
+    <div class="px-4 py-2 d-flex justify-content-between align-items-center small"
+         style="background: rgba(0, 0, 0, 0.4); border-bottom: 1px solid rgba(255, 255, 255, 0.04); z-index: 10;">
+        <span class="text-white-50">
+            <i class="bi bi-info-circle text-info me-1"></i> @statusMessage
+        </span>
+        <span class="text-white-50">
+            Terminador solar automático activo (Ciclo Día / Noche UTC)
+        </span>
     </div>
 
-    @if (!string.IsNullOrEmpty(statusMessage))
-    {
-        <div class="alert alert-info py-2 shadow-sm mb-3">
-            <i class="bi bi-broadcast me-2"></i> @statusMessage
-        </div>
-    }
-
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-black position-relative" style="height: 75vh; min-height: 550px;">
-        <canvas id="globeCanvas" style="width: 100%; height: 100%; display: block; background: #000;">
+    <!-- CANVAS DEL GLOBO 3D -->
+    <div class="flex-grow-1 position-relative w-100 h-100" style="background: #000;">
+        <canvas id="globeCanvas" style="width: 100%; height: 100%; display: block; outline: none;">
             Tu navegador no soporta Canvas/WebGL.
         </canvas>
+
+        <!-- TARJETA HUD FLOTANTE DE TELEMETRÍA (Al hacer clic en un jet) -->
+        @if (selectedJet != null)
+        {
+            <div class="position-absolute top-0 end-0 m-3 p-3 text-white rounded-3 shadow-lg"
+                 style="width: 330px; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 210, 255, 0.3); z-index: 20;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="badge rounded-pill text-uppercase px-2 py-1 mb-1" style="background: rgba(0, 210, 255, 0.2); color: #38bdf8;">
+                            Aeronave en Ruta
+                        </span>
+                        <h4 class="fw-bold mb-0 text-white">@selectedJet.matricula</h4>
+                        <small class="text-white-50">@selectedJet.modelo</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarInspector"></button>
+                </div>
+
+                <hr style="border-color: rgba(255, 255, 255, 0.1);" class="my-2" />
+
+                <div class="row g-2 text-center my-2">
+                    <div class="col-6">
+                        <div class="p-2 rounded-2" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <small class="text-white-50 d-block">Altitud</small>
+                            <span class="fw-bold fs-6 text-warning">@selectedJet.altitudPies ft</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-2" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <small class="text-white-50 d-block">Velocidad</small>
+                            <span class="fw-bold fs-6 text-success">@selectedJet.velocidad kts</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-2" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <small class="text-white-50 d-block">Rumbo (HDG)</small>
+                            <span class="fw-bold fs-6 text-light">@selectedJet.rumbo°</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-2" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <small class="text-white-50 d-block">Estado</small>
+                            <span class="fw-bold fs-6 text-info">@selectedJet.estado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-2 text-white-50 small">
+                    <i class="bi bi-geo-alt text-info me-1"></i> Lat: @selectedJet.latitud.ToString("F4"), Lon: @selectedJet.longitud.ToString("F4")
+                </div>
+            </div>
+        }
     </div>
 </div>
 
 @code {
     private IJSObjectReference? globeModule;
+    private DotNetObjectReference<Radar>? dotNetHelper;
     private bool initialized = false;
     private bool cargando = false;
     private bool liveTracking = true;
-    private string? statusMessage;
+    private string statusMessage = "Iniciando telemetría geoespacial...";
     private CancellationTokenSource cts = new();
+    private JetTelemetryDto? selectedJet;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -59,11 +135,14 @@
         {
             try
             {
+                dotNetHelper = DotNetObjectReference.Create(this);
                 globeModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/jetx-globe.js");
-                var ok = await JS.InvokeAsync<bool>("jetxGlobe.init", "globeCanvas");
+
+                var ok = await JS.InvokeAsync<bool>("jetxGlobe.init", "globeCanvas", dotNetHelper);
                 if (ok)
                 {
                     initialized = true;
+                    await CargarAeroviasEnGloboAsync();
                     await SincronizarRadarAsync();
                     _ = IniciarLoopRastreoAsync();
                 }
@@ -71,14 +150,48 @@
             catch (JSDisconnectedException) { }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Radar.razor] Error: {ex.Message}");
+                Console.WriteLine($"[Radar.razor] Error al inicializar: {ex.Message}");
             }
         }
     }
 
-    private void AlternarRastreo()
+    private void AlternarRastreo() => liveTracking = !liveTracking;
+    private void CerrarInspector() => selectedJet = null;
+
+    [JSInvokable]
+    public void SeleccionarAvionDesdeCanvas(JetTelemetryDto jet)
     {
-        liveTracking = !liveTracking;
+        selectedJet = jet;
+        StateHasChanged();
+    }
+
+    private async Task CargarAeroviasEnGloboAsync()
+    {
+        try
+        {
+            var waypoints = (await RouteRepository.ObtenerTodosLosWaypointsAsync()).ToDictionary(w => w.Id);
+            var airways = await RouteRepository.ObtenerTodasLasAeroviasAsync();
+
+            var datosAerovias = airways
+                .Where(a => waypoints.ContainsKey(a.WaypointOrigenId) && waypoints.ContainsKey(a.WaypointDestinoId))
+                .Select(a => new
+                {
+                    codigo = a.CodigoAerovia,
+                    origenLat = waypoints[a.WaypointOrigenId].Latitud,
+                    origenLon = waypoints[a.WaypointOrigenId].Longitud,
+                    destLat = waypoints[a.WaypointDestinoId].Latitud,
+                    destLon = waypoints[a.WaypointDestinoId].Longitud,
+                    altitudMin = a.AltitudMinimaPies,
+                    altitudMax = a.AltitudMaximaPies
+                });
+
+            await JS.InvokeVoidAsync("jetxGlobe.renderAirways", datosAerovias);
+        }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Radar] Error en aerovías: {ex.Message}");
+        }
     }
 
     private async Task IniciarLoopRastreoAsync()
@@ -86,7 +199,7 @@
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
         try
         {
-            while (await timer.WaitForNextTickAsync(cts.Token))
+            while (!cts.IsCancellationRequested && await timer.WaitForNextTickAsync(cts.Token))
             {
                 if (liveTracking && initialized && !cargando)
                 {
@@ -107,7 +220,7 @@
             var misJets = (await JetRepository.ObtenerTodosLosJetsAsync()).ToList();
             var traficoReal = await OpenSkyService.ObtenerTraficoAereoAsync();
 
-            var datos = new List<object>();
+            var lista = new List<JetTelemetryDto>();
 
             for (int i = 0; i < misJets.Count; i++)
             {
@@ -115,7 +228,7 @@
                 if (i < traficoReal.Count)
                 {
                     var vuelo = traficoReal[i];
-                    datos.Add(new
+                    lista.Add(new JetTelemetryDto
                     {
                         matricula = jet.Matricula,
                         modelo = jet.Modelo,
@@ -128,17 +241,16 @@
                         esJetX = true
                     });
 
-                    // Sincronizar con Supabase para la app Android
                     _ = JetRepository.ActualizarPosicionJetAsync(jet.Id, vuelo.Latitud, vuelo.Longitud);
                 }
             }
 
-            foreach (var otro in traficoReal.Skip(misJets.Count).Take(20))
+            foreach (var otro in traficoReal.Skip(misJets.Count).Take(25))
             {
-                datos.Add(new
+                lista.Add(new JetTelemetryDto
                 {
                     matricula = otro.Callsign,
-                    modelo = "Comercial",
+                    modelo = "Comercial ADS-B",
                     estado = "En Ruta",
                     latitud = otro.Latitud,
                     longitud = otro.Longitud,
@@ -149,13 +261,13 @@
                 });
             }
 
-            await JS.InvokeVoidAsync("jetxGlobe.renderJets", datos);
-            statusMessage = $"Última actualización ADS-B: {DateTime.Now:HH:mm:ss} — {datos.Count} aeronaves monitoreadas.";
+            await JS.InvokeVoidAsync("jetxGlobe.renderJets", lista);
+            statusMessage = $"Barrido de radar completado a las {DateTime.Now:HH:mm:ss} • {lista.Count} aeronaves monitoreadas en tiempo real.";
         }
         catch (JSDisconnectedException) { }
         catch (Exception ex)
         {
-            statusMessage = $"Aviso: {ex.Message}";
+            statusMessage = $"Aviso del radar: {ex.Message}";
         }
         finally
         {
@@ -168,6 +280,7 @@
     {
         cts.Cancel();
         cts.Dispose();
+        dotNetHelper?.Dispose();
 
         if (globeModule is not null)
         {
@@ -177,5 +290,18 @@
             }
             catch (JSDisconnectedException) { }
         }
+    }
+
+    public class JetTelemetryDto
+    {
+        public string matricula { get; set; } = string.Empty;
+        public string modelo { get; set; } = string.Empty;
+        public string estado { get; set; } = string.Empty;
+        public double latitud { get; set; }
+        public double longitud { get; set; }
+        public int altitudPies { get; set; }
+        public int rumbo { get; set; }
+        public int velocidad { get; set; }
+        public bool esJetX { get; set; }
     }
 }
