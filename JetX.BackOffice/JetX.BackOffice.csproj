@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>9a595cd1-a202-45b0-ad65-7e878e697130</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JetX.Application\JetX.Application.csproj" />
+    <ProjectReference Include="..\JetX.Domain\JetX.Domain.csproj" />
+    <ProjectReference Include="..\JetX.Infrastructure\JetX.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

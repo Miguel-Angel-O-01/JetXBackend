@@ -1,0 +1,213 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using JetX.Domain.Entities
+@using JetX.Application.Interfaces
+@inject IJetRepository JetRepository
+@inject IRouteRepository RouteRepository
+
+<PageTitle>JetX | Centro de Mando Operativo</PageTitle>
+
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 text-dark">Centro de Mando Operativo</h2>
+            <p class="text-muted mb-0">Monitoreo en tiempo real de flota, espacio aéreo y disponibilidad ejecutiva</p>
+        </div>
+        <button class="btn btn-outline-dark px-3 shadow-sm" @onclick="CargarMetricasAsync">
+            <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos
+        </button>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center align-items-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <span class="ms-3 text-muted">Sincronizando telemetría y espacio aéreo...</span>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger shadow-sm">
+            <strong>Error de conexión con Supabase:</strong> @error
+        </div>
+    }
+    else
+    {
+        <!-- Tarjetas de Métricas Rápidas (KPIs) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Flota Total</span>
+                            <h3 class="fw-bold mb-0 text-dark">@totalJets</h3>
+                        </div>
+                        <div class="bg-primary-subtle text-primary p-3 rounded-circle">
+                            <i class="bi bi-airplane-engines fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Disponibles</span>
+                            <h3 class="fw-bold mb-0 text-success">@jetsDisponibles</h3>
+                        </div>
+                        <div class="bg-success-subtle text-success p-3 rounded-circle">
+                            <i class="bi bi-check-circle-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">En Vuelo / Mantenimiento</span>
+                            <h3 class="fw-bold mb-0 text-warning">@(totalJets - jetsDisponibles)</h3>
+                        </div>
+                        <div class="bg-warning-subtle text-warning p-3 rounded-circle">
+                            <i class="bi bi-tools fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small fw-semibold text-uppercase">Red de Aerovías</span>
+                            <h3 class="fw-bold mb-0 text-info">@totalAerovias</h3>
+                        </div>
+                        <div class="bg-info-subtle text-info p-3 rounded-circle">
+                            <i class="bi bi-diagram-3-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Accesos Rápidos y Resumen -->
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+                <div class="card border-0 shadow-sm rounded-3 p-4 bg-white h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0 text-dark">Aeronaves en Servicio</h5>
+                        <a href="jets" class="btn btn-sm btn-link text-decoration-none">Ver flota completa &rarr;</a>
+                    </div>
+                    @if (ultimosJets != null && ultimosJets.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Matrícula</th>
+                                        <th>Modelo</th>
+                                        <th>Capacidad</th>
+                                        <th>Tarifa USD</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var jet in ultimosJets.Take(5))
+                                    {
+                                        <tr>
+                                            <td class="fw-bold text-primary">@jet.Matricula</td>
+                                            <td>@jet.Modelo</td>
+                                            <td>@jet.CapacidadPasajeros pax</td>
+                                            <td>$@jet.CostoHoraUsd.ToString("N2")/h</td>
+                                            <td>
+                                                @if (jet.Estado == "Disponible")
+                                                {
+                                                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1">Disponible</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary rounded-pill px-3 py-1">@jet.Estado</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No hay aeronaves cargadas actualmente.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Accesos a Módulos del Sistema -->
+            <div class="col-12 col-lg-4">
+                <div class="card border-0 shadow-sm rounded-3 p-4 bg-white h-100">
+                    <h5 class="fw-bold mb-3 text-dark">Accesos Directos</h5>
+                    <div class="d-grid gap-2">
+                        <a href="jets" class="btn btn-outline-primary d-flex align-items-center justify-content-between p-3 rounded-3 text-start">
+                            <div>
+                                <strong class="d-block text-dark">Gestión de Flota</strong>
+                                <small class="text-muted">Altas, bajas y tarifas de jets</small>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted"></i>
+                        </a>
+
+                        <div class="p-3 border rounded-3 bg-light">
+                            <strong class="d-block text-dark mb-1">Algoritmo A* & Grafo del Cielo</strong>
+                            <small class="text-muted">Conectado a PostGIS para cálculo de rutas geodésicas en tiempo real.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool cargando = true;
+    private string? error;
+    private int totalJets = 0;
+    private int jetsDisponibles = 0;
+    private int totalAerovias = 0;
+    private IEnumerable<Jet>? ultimosJets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarMetricasAsync();
+    }
+
+    private async Task CargarMetricasAsync()
+    {
+        cargando = true;
+        error = null;
+
+        try
+        {
+            var jetsTask = JetRepository.ObtenerTodosLosJetsAsync();
+            var aeroviasTask = RouteRepository.ObtenerTodasLasAeroviasAsync();
+
+            await Task.WhenAll(jetsTask, aeroviasTask);
+
+            ultimosJets = await jetsTask;
+            var aerovias = await aeroviasTask;
+
+            totalJets = ultimosJets?.Count() ?? 0;
+            jetsDisponibles = ultimosJets?.Count(j => j.Estado == "Disponible") ?? 0;
+            totalAerovias = aerovias?.Count() ?? 0;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

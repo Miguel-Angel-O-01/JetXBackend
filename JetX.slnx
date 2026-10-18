@@ -1,7 +1,6 @@
 <Solution>
   <Project Path="JetX.Application/JetX.Application.csproj" />
-  <Project Path="JetX.BackOffice/JetX.BackOffice.Client/JetX.BackOffice.Client.csproj" />
-  <Project Path="JetX.BackOffice/JetX.BackOffice/JetX.BackOffice.csproj" />
+  <Project Path="JetX.BackOffice/JetX.BackOffice.csproj" Id="69018341-3860-46ab-93fd-e215d1debacf" />
   <Project Path="JetX.Domain/JetX.Domain.csproj" />
   <Project Path="JetX.Infrastructure/JetX.Infrastructure.csproj" />
   <Project Path="JetX.WebAPI/JetX.WebAPI.csproj" />

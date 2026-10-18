@@ -1,0 +1,29 @@
+﻿<div class="p-3 border-bottom border-secondary d-flex align-items-center">
+    <i class="bi bi-airplane text-primary fs-3 me-2"></i>
+    <span class="fs-4 fw-bold text-white tracking-wider">
+        <span class="text-primary">JET</span>X
+    </span>
+</div>
+
+<nav class="nav nav-pills flex-column p-3 gap-2">
+    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2" href="" Match="NavLinkMatch.All">
+        <i class="bi bi-speedometer2 fs-5"></i>
+        <span>Dashboard</span>
+    </NavLink>
+    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2" href="jets">
+        <i class="bi bi-airplane-engines fs-5"></i>
+        <span>Flota de Jets</span>
+    </NavLink>
+</nav>
+
+<style>
+    .nav-link.active {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+    }
+
+    .nav-link:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #ffffff !important;
+    }
+</style>

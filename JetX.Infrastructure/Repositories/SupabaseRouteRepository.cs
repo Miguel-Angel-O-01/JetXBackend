@@ -1,6 +1,7 @@
 ﻿using Supabase;
 using JetX.Domain.Entities;
 using JetX.Application.Interfaces;
+using JetX.Infrastructure.Models;
 using Microsoft.Extensions.Configuration;
 
 namespace JetX.Infrastructure.Repositories
@@ -9,46 +10,68 @@ namespace JetX.Infrastructure.Repositories
     {
         private readonly Client _supabaseClient;
 
-        // Inyectamos la configuración general para leer las llaves de los User Secrets
         public SupabaseRouteRepository(IConfiguration configuration)
         {
             var url = configuration["SupabaseSettings:Url"]
-                ?? throw new ArgumentNullException("La URL de Supabase no está configurada.");
+                ?? throw new ArgumentNullException(nameof(configuration), "La URL de Supabase no está configurada.");
             var anonKey = configuration["SupabaseSettings:AnonKey"]
-                ?? throw new ArgumentNullException("La AnonKey de Supabase no está configurada.");
+                ?? throw new ArgumentNullException(nameof(configuration), "La AnonKey de Supabase no está configurada.");
 
-            var options = new SupabaseOptions { AutoConnectRealtime = true };
+            var options = new SupabaseOptions { AutoConnectRealtime = false };
             _supabaseClient = new Client(url, anonKey, options);
         }
 
         public async Task<IEnumerable<Waypoint>> ObtenerTodosLosWaypointsAsync()
         {
             await _supabaseClient.InitializeAsync();
-
-            // Descarga todos los fijos, aeropuertos y radioayudas mapeados en la nube
-            var response = await _supabaseClient.From<Waypoint>().Get();
-            return response.Models;
+            var response = await _supabaseClient.From<WaypointModel>().Get();
+            return response.Models.Select(MapToDomain);
         }
 
         public async Task<IEnumerable<Airway>> ObtenerTodasLasAeroviasAsync()
         {
             await _supabaseClient.InitializeAsync();
-
-            // Descarga las conexiones (aristas) del grafo del cielo
-            var response = await _supabaseClient.From<Airway>().Get();
-            return response.Models;
+            var response = await _supabaseClient.From<AirwayModel>().Get();
+            return response.Models.Select(MapToDomain);
         }
 
         public async Task<Waypoint?> ObtenerWaypointPorCodigoAsync(string codigo)
         {
             await _supabaseClient.InitializeAsync();
-
-            // Busca un aeropuerto o fijo específico por su identificador único 
-            var response = await _supabaseClient.From<Waypoint>()
+            var response = await _supabaseClient.From<WaypointModel>()
                 .Where(x => x.Codigo == codigo)
-                .Get();
+                .Single();
 
-            return response.Model;
+            return response != null ? MapToDomain(response) : null;
+        }
+
+        private static Waypoint MapToDomain(WaypointModel model)
+        {
+            var (lat, lon) = model.ObtenerLatLon();
+            return new Waypoint
+            {
+                Id = model.Id,
+                Codigo = model.Codigo,
+                Nombre = model.Nombre,
+                Tipo = model.Tipo,
+                Latitud = lat,
+                Longitud = lon,
+                CreatedAt = model.CreatedAt
+            };
+        }
+
+        private static Airway MapToDomain(AirwayModel model)
+        {
+            return new Airway
+            {
+                Id = model.Id,
+                CodigoAerovia = model.CodigoAerovia,
+                WaypointOrigenId = model.WaypointOrigenId,
+                WaypointDestinoId = model.WaypointDestinoId,
+                AltitudMinimaPies = model.AltitudMinimaPies,
+                AltitudMaximaPies = model.AltitudMaximaPies,
+                CreatedAt = model.CreatedAt
+            };
         }
     }
 }

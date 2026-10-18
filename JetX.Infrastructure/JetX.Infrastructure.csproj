@@ -1,21 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Google_GenerativeAI" Version="3.6.8" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="11.0.0-rc.2.26504.105" />
-    <PackageReference Include="Newtonsoft.Json" Version="14.0.1-beta2" />
-    <PackageReference Include="Stripe.net" Version="53.1.0-beta.1" />
-    <PackageReference Include="Supabase" Version="8.4.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Google_GenerativeAI" Version="3.6.8" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0-*" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Stripe.net" Version="48.1.0" />
+		<PackageReference Include="Supabase" Version="8.4.0" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\JetX.Application\JetX.Application.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\JetX.Application\JetX.Application.csproj" />
+		<ProjectReference Include="..\JetX.Domain\JetX.Domain.csproj" />
+	</ItemGroup>
 
 </Project>
