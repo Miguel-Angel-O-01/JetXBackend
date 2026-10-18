@@ -1,3 +1,4 @@
+using JetX.Infrastructure.Services;
 using JetX.Application.Interfaces;
 using JetX.Infrastructure.Repositories;
 using JetX.BackOffice.Components;
@@ -11,6 +12,8 @@ builder.Services.AddRazorComponents()
 // Inyección de dependencias para el BackOffice
 builder.Services.AddScoped<IJetRepository, SupabaseJetRepository>();
 builder.Services.AddScoped<IRouteRepository, SupabaseRouteRepository>();
+// Cliente HTTP para OpenSky
+builder.Services.AddHttpClient<OpenSkyTrafficService>();
 
 var app = builder.Build();
 

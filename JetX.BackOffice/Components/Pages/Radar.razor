@@ -1,0 +1,181 @@
+﻿@page "/radar"
+@rendermode InteractiveServer
+@using JetX.Domain.Entities
+@using JetX.Application.Interfaces
+@using JetX.Infrastructure.Services
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject IJetRepository JetRepository
+@inject OpenSkyTrafficService OpenSkyService
+@implements IAsyncDisposable
+
+<PageTitle>JetX | Radar 3D Global</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold mb-1 text-dark">Radar de Operaciones Global</h2>
+            <p class="text-muted mb-0">Flota JetX integrada con telemetría ADS-B de OpenSky Network</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge @(liveTracking ? "bg-success" : "bg-secondary") px-3 py-2">
+                @(liveTracking ? "● Rastreo Automático Activo" : "○ En Pausa")
+            </span>
+            <button class="btn btn-outline-dark" @onclick="AlternarRastreo">
+                <i class="bi @(liveTracking ? "bi-pause-fill" : "bi-play-fill")"></i>
+                @(liveTracking ? "Pausar" : "Iniciar Rastreo")
+            </button>
+            <button class="btn btn-primary shadow-sm" @onclick="SincronizarRadarAsync" disabled="@cargando">
+                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Ahora
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert alert-info py-2 shadow-sm mb-3">
+            <i class="bi bi-broadcast me-2"></i> @statusMessage
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-black position-relative" style="height: 75vh; min-height: 550px;">
+        <canvas id="globeCanvas" style="width: 100%; height: 100%; display: block; background: #000;">
+            Tu navegador no soporta Canvas/WebGL.
+        </canvas>
+    </div>
+</div>
+
+@code {
+    private IJSObjectReference? globeModule;
+    private bool initialized = false;
+    private bool cargando = false;
+    private bool liveTracking = true;
+    private string? statusMessage;
+    private CancellationTokenSource cts = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                globeModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/jetx-globe.js");
+                var ok = await JS.InvokeAsync<bool>("jetxGlobe.init", "globeCanvas");
+                if (ok)
+                {
+                    initialized = true;
+                    await SincronizarRadarAsync();
+                    _ = IniciarLoopRastreoAsync();
+                }
+            }
+            catch (JSDisconnectedException) { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Radar.razor] Error: {ex.Message}");
+            }
+        }
+    }
+
+    private void AlternarRastreo()
+    {
+        liveTracking = !liveTracking;
+    }
+
+    private async Task IniciarLoopRastreoAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cts.Token))
+            {
+                if (liveTracking && initialized && !cargando)
+                {
+                    await InvokeAsync(SincronizarRadarAsync);
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task SincronizarRadarAsync()
+    {
+        if (!initialized || cargando) return;
+        cargando = true;
+
+        try
+        {
+            var misJets = (await JetRepository.ObtenerTodosLosJetsAsync()).ToList();
+            var traficoReal = await OpenSkyService.ObtenerTraficoAereoAsync();
+
+            var datos = new List<object>();
+
+            for (int i = 0; i < misJets.Count; i++)
+            {
+                var jet = misJets[i];
+                if (i < traficoReal.Count)
+                {
+                    var vuelo = traficoReal[i];
+                    datos.Add(new
+                    {
+                        matricula = jet.Matricula,
+                        modelo = jet.Modelo,
+                        estado = "En Vuelo",
+                        latitud = vuelo.Latitud,
+                        longitud = vuelo.Longitud,
+                        altitudPies = (int)(vuelo.AltitudMetros * 3.28084),
+                        rumbo = (int)vuelo.RumboHeading,
+                        velocidad = (int)vuelo.VelocidadNudos,
+                        esJetX = true
+                    });
+
+                    // Sincronizar con Supabase para la app Android
+                    _ = JetRepository.ActualizarPosicionJetAsync(jet.Id, vuelo.Latitud, vuelo.Longitud);
+                }
+            }
+
+            foreach (var otro in traficoReal.Skip(misJets.Count).Take(20))
+            {
+                datos.Add(new
+                {
+                    matricula = otro.Callsign,
+                    modelo = "Comercial",
+                    estado = "En Ruta",
+                    latitud = otro.Latitud,
+                    longitud = otro.Longitud,
+                    altitudPies = (int)(otro.AltitudMetros * 3.28084),
+                    rumbo = (int)otro.RumboHeading,
+                    velocidad = (int)otro.VelocidadNudos,
+                    esJetX = false
+                });
+            }
+
+            await JS.InvokeVoidAsync("jetxGlobe.renderJets", datos);
+            statusMessage = $"Última actualización ADS-B: {DateTime.Now:HH:mm:ss} — {datos.Count} aeronaves monitoreadas.";
+        }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex)
+        {
+            statusMessage = $"Aviso: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        cts.Cancel();
+        cts.Dispose();
+
+        if (globeModule is not null)
+        {
+            try
+            {
+                await globeModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}
